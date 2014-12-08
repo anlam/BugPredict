@@ -1,0 +1,338 @@
+==============================================================================
+! This changelog is no longer maintained. 
+! Please cf. http://recoder.sourceforge.net for current
+! information on recoder.
+==============================================================================
+
+
+This changelog contains the changes, additions and bugfixes made from 0.90 to 0.91
+
+BUGFIXES
+========
+- fixed bug 2155226 - exception when using unknown type 
+						(now support array type/erased type for UnknownType)
+- fixed bug 2134267 - problem resolving package names from 
+						bytecode classes when naming conventions are not followed (e.g., COM.xyz)
+- fixed bug 2132665 - type of anonymous classes reported incorrectly
+- fixed some minor issues which have not been known to cause problems, but might 
+						(e.g., implemented some hashCode() methods) 
+
+ADDITIONS
+=========
+- "Official" release of a  set of transformations that 
+    	backport Java 5 source code to earlier Java versions
+- Added NameInfo.getClassTypes() and NameInfo.getMethods() for 
+    	querying the model for classes/methods in a pattern-based way. 
+
+==============================================================================
+==============================================================================
+
+This changelog contains the changes, additions and bugfixes made from 0.86 to 0.90
+
+
+BUGFIXES
+========
+- fixed bug [ 2046337 ] - return type of Object.getClass() fixed
+- fixed bug [ 2046167 ] - type resolution bug in rare cases
+- fixed bug [ 2046005 ] - type inference not performed for erased methods
+- fixed bug [ 2045354 ] - bug in type inference
+- fixed bug [ 2045207 ] - (parser) type parameters not supported for constructor declarations
+- fixed bug [ 2045181 ] - types imported through static imports not found
+- fixed bug [ 2044375 ] - NullPointerException when unknown type appears in type arguments
+- fixed bug [ 2044230 ] - parser fails on some double constants
+- fixed bug [ 2020825 ] - inner classes do not "inherit" type parameters
+- fixed bug [ 2013315 ] - class with public generic fields in a library (field signature not evaluated)
+- fixed bug [ 2000780 ] - problems resolving return type of generic methods  
+
+bugs fixed which were not reported to bugtracker:
+- fixed lots of bugs in DefaultSourceInfo: 
+   o java.lang.Object no longer reported as a direct supertype of enum-types
+   o java.lang.Object is added to supertype list for ClassDeclarations not explicitly
+   	 declaring a superclass (except if ClassDeclaration is java.lang.Object itself) 
+   o implemented interfaces of enums reported as supertypes
+   o anonymous enum class body didn't get their supertypes reported properly
+   o .class : type reported properly for java 5 
+- parser: allow array types as type arguments to explicit generic method invocations
+- several bug fixes concerning type inference for methods 
+- bytecode parser: fixed a bug when type of a field is generic and a member type at the same time 
+
+ADDITIONS
+=========
+- implemented some very basic validate() methods:
+	o recoder.statement.If checks if expression is boolean or Boolean
+	o recoder.expression.operator. CopyAssignment checks if assignment is valid
+		(not 100% implemented yet)
+
+CHANGES
+=======
+- ArrayType is now subtype of ClassType
+- ArrayLengthReference has been removed (replaced by ordinary FieldReference)
+- There are a lot of API changes. Please confer upgrading-documentation on homepage. 
+
+NOTES
+=====
+- Java Language Specification 3rd edition, § 10.8 states:
+    "The direct superclass of an array type is Object.
+     Every array type implements the interfaces Cloneable and java.io.Serializable."
+  However, §4.10.3 lists other rules for *sub*typing. In our opinion, both
+  definitions don't go along too well. Recoder follows §4.10.3, and applies
+  those rules reversely to supertyping as well. In particular, the
+  direct supertypes of String[] are:
+    java.lang.Object[]
+	java.io.Serializable[]
+	java.lang.Comparable[]
+	java.lang.CharSequence[]
+  Note that the interfaces Cloneable and Serializable are implemented through the
+  transitive closure of supertypes.
+   
+     
+
+==============================================================================
+==============================================================================
+
+This changelog contains the changes, additions and bugfixes made from 0.85 to 0.86
+
+BUGFIXES
+========
+- fixed bug [ 1988780 ] - Unresolved references using external(bytecode) enums 
+- fixed bug [ 1988746 ] - Unboxing issue in arithmetic expressions
+- fixed bug [ 1948045 ] - parser should allowed modifiers for local classes
+- mark static member classes with 'static' access flag
+- fixed bug [ 1996819 ] partly - getType(MethodReference()) includes a hotfix
+				to return the proper type for array types' clone() method
+
+ADDITIONS
+=========
+- added recoder.bytecode.EnumConstantInfo, which extends recoder.bytecode.FieldInfo 
+  and extends recoder.abstraction.EnumConstant. This helps resolving bug
+  [1988780] and should, besides that, be a transparent addition for most
+  applications.
+
+==============================================================================
+==============================================================================
+
+This changelog contains the changes, additions and bugfixes made from 0.84 to 0.85
+
+BUGFIXES
+========
+- fixed some parser problems where "start position" is not set for program elements,
+  which caused problems with properly attaching comments to program elements as
+  well as pretty printing. The problems reported in bug report [ 1215758 ] are fixed.
+- fixed bug [ 1911073 ] - Pretty printing problems with empty blocks 
+- fixed bug [ 1936842 ] - Autoboxing is not considered when used on a raw type
+- fixed bug [ 1936528 ] - Identifying most specific method among several var-arg methods
+- fixed bug [ 1894463 ] - Doesn't support special syntax for instantiate inner classes
+- fixed bug [ 1895973 ] - Failed to properly handle generified classes
+- implemented ArrayType.equals() - this fixes an issue with arrays of type variables.
+- fixed AnnotationUse.deepClone()
+
+ADDITIONS
+=========
+- added ProgramModelInfo.getCommonSupertype(Type, Type). Returns the most-common
+  supertype of two types, possibly an IntersectionType. 
+- added some ProgramFactory.parseXYZ() methods
+
+CHANGES
+=======
+- project setting "TABSIZE" now defaults to "4" like most current IDEs.
+
+
+==============================================================================
+==============================================================================
+
+This changelog contains the changes, additions and bugfixes made from 0.83 to 0.84
+
+BUGFIXES
+========
+- fixed some of the parseXYZ-methods in ProgramFactory to correctly return ASTLists
+	instead of "regular" Lists.
+- fixed bugs which left NameInfo in an inconsistent change after package renames
+- Fixed recoder.kit.transformation.RenamePackage. It uses different kinds of AST modifications
+	now, so that it no longer corrupts internal datastructures (see also "ADDITIONS")
+- ReflectionImport should now work again work on a basic level (still no java 5 support)
+- Fixed issues concerning ADD_NEWLINE_AT_END_OF_FILE
+
+ADDITIONS
+=========
+- Introduced recoder.IllegalTransformationException. This exception is thrown
+  when certain kinds of transformations which cannot be properly handled are
+  performed. When such an exception is raised, a proper workaround is 
+  suggested. Currently, this applies only to detaching Identifiers from
+  a PackageReference whose parent is a PackageSpecification. The workaround is
+  to exchange either the PackageReference or the PackageSpecification.
+
+==============================================================================
+==============================================================================
+
+This changelog contains the changes, additions and bugfixes made from 0.82 to 0.83
+
+BUGFIXES
+========
+- Type parameters were not resolved on field references (thanks to Mattias Ulbrich for 
+    finding the bug and submitting a patch) and when using arrays of type parameters
+- fixed bug in TypeParameterDeclaration.replaceChild() which prevented bounds to be replaced
+- PrettyPrinter forces a newline after comments if the immediately following element
+    has an undefined position code (this was a bug because after transformations
+    the pretty printer might print uncompilable code)
+- Allow empty ElementValueArrayInitializer in Parser
+- ConstructorDeclarations' start positions are now handled like in MethodDeclarations
+
+CHANGES
+=======
+- implemented getFirstElement() / getLastElement() in some classes properly
+
+ADDITIONS
+=========
+- support for files which end with a single line comment which don't end with 
+  a newline character. This is done by simulating an (additional) \n-character
+  at the end of each file. Can be disabled by setting the project setting
+  ADD_NEWLINE_AT_END_OF_FILE to false.
+
+
+==============================================================================
+==============================================================================
+
+This changelog contains the changes, additions and bugfixes made from 0.81 to 0.82
+
+BUGFIXES
+========
+- under MacOS, recoder.util.FileUtils correctly finds the runtime-jar file.
+- recoder.io.DefaultProjectFileIO no longer throws NullPointerException when
+	specifying file in current directory
+- recoder.convenience.Naming.toCanonicalName(CompilationUnit) now allows CUs
+	without any type declaration. Needed for package-info.java.
+
+CHANGES
+=======
+- ClassType.getConstructors now returns List<? extends Constructor> instead of List<Constructor>.
+  Unlike methods, constructors are not inherited, so this makes the API a little bit more
+  flexible (subclasses use covariant return types)
+
+ADDITIONS
+=========
+- small enhancement: static accesses to non-static members are now detected and reported
+  as errors if the reference prefix is a type reference
+
+==============================================================================
+==============================================================================
+
+
+This changelog contains the changes, additions and bugfixes made from 0.80-Beta1 to 0.81
+
+- recoder.kit.transformation.java5to4 contains a set of transformations that convert Java 5 code and make it 
+  complient to Java 1.4. There are still some bugs in the transformations dealing with generics and co-variant 
+  return types.
+- lots of bugs concerning java 5 features have been fixed since 0.80-Beta1. AN UPDATE IS HIGHLY RECOMMENDED
+
+CHANGES
+=======
+VariableDeclaration.getVariables() is not modifiable any more due to implementation of ParameterDeclaration.
+
+The type-specific lists in the recoder.list package have been replaced with a clean java 5 generic 
+collections-based implementation.
+
+ADDITIONS
+=========
+ClassFile now stores its original data location, readable with ClassFile.getLocation()
+
+==============================================================================
+==============================================================================
+
+
+This changelog contains the changes, additions and bugfixes made from 0.75 to 0.80-Beta1
+
+- position codes(line/col) may not be set correctly for Java 5 program elements
+- PrettyPrinting may be faulty
+
+Additions
+=========
+- Java 5 support, including
+	- support for static imports
+	- support for variable number of arguments (vararg)
+	- support for autoboxing
+	- support for enhanced for loops
+	- support for annotations
+	- support for enums
+	- support for generics
+- Added project settings:
+	- JAVA_5  to enable java 5 support
+	- TABSIZE to manually set the tab size when parsing files; defaults to 8. 
+	          Note that this must be set before parsing to have any meaning.
+
+API Changes
+===========
+- support for static imports required that the parent type of Identifier 
+  was changed from NamedProgramElement to NonTerminalProgramElement; see "Coding and Porting.txt"
+- instead of Modifiers, declarations now have DeclarationSpecifiers, meaning annotations + modifiers;
+  see "Coding and Porting.txt"
+
+other Changes
+=============
+- java.lang.Object is now always a direct superclass for interfaces,
+  not only if no other supertypes were present (this is the behaviour as it is in bytecode class files)
+  While this is not compliant with java language spec, it's the desired behaviour for bytecode types,
+  and we think that types provided in sourcecode should behave as closely as possible to those 
+  provided in bytecode
+- incorporated some improvements from the original Java 1.5 grammar for JavaCC
+  (i.e., improved unicode support)
+- types available as source in .jar files will not be loaded any more. This was only done 
+  when looking for types after having loaded all other source files.
+  We can't think of any value in loading them delayed, as it usually leads to unresolvable 
+  type references
+
+Changes in Progress
+===================
+- referencing a non-static member from a static context is now reported as an error; this doesn't
+  work entirely, yet.
+
+Bugs Fixed
+==========
+- Fixed a bug: type resolving fails for ArrayInitializer when parent is NewArray
+- Fixed a bug in JavaProgramFactory.initialize()
+- Reset caches on changes of model element "extends"
+- Fixed parser bug #1218730: "super" not accepted as a PrimarySuffix
+- Constructors of static member classes may not have been parsed correctly by bytecode parser
+- fixed a bug in JavaProgramFactory.parseLong(String)
+
+Known issues
+============
+- "Reflection import" is untested for annotations/enums and may not be complete.
+  For instance, generic field/method information is not read.
+- Naming of local/anonymous types is not compliant with JLS of any version (note that
+  1.5 and 1.4 have different naming conventions for them, too). Also note that names of such types may vary from run to run, therefore
+  not producing deterministic results when querying them. This may or may not be changed
+  in later versions, depending on demand and time available on our account.
+- semantics of annotations such as @Override are not evaluated.
+
+==============================================================================
+==============================================================================
+
+This changelog contains the changes, additions and bugfixes made from 0.73 to 0.75.
+
+Changes
+================
+- renamed Debug.assert(...)-Metodes to assertNonnull and assertBoolean, respectively, for JDK 1.4 compatibility
+- if a compilation unit with no public type is saved back to disc, the original filename is kept, if possible.
+- comments are now attached to better matching program model elements
+- NonTerminalProgramElement.getIndexOfChild(int) is now deprecated. 
+	It does not return the child index as received by getIndexOfChild(), 
+	therefore it is common that 
+	    getIndexOfChild(getChildPositionCode(aChild)) 
+	    		!= getIndexOfChild(aChild)
+
+
+Unit tests
+==========
+some tests were added, old tests have been converted to use JUnit
+
+Bugs fixed
+==========
+- DefaultNameInfo is not updated by DefaultSourceInfo: Renaming types (or even entire packages) leads to inconsistency
+- null pointer exception thrown when loading bytecode classes that contain class initializers (Max Gensthaler)
+- not all constructors validate parent roles
+- incomplete sources are not handled correctly
+- FileUtils.getPathOfSystemClasses() might return wrong results when certain .jar-files are in class path (e.g. JUnitSupport.jar)
+
+Known issues
+===========
+- when dealing with incomplete sources, executing transformations leads to unspecified behaviour

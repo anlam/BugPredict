@@ -1,0 +1,247 @@
+<?xml version="1.0"?>
+<!--!DOCTYPE project PUBLIC "-//ANT//DTD project//EN" "project.dtd"-->
+
+<project name="RECODER" default="build" basedir=".">
+ 
+  <!-- general names and versions -->
+  <property name="project.main.package" value="recoder"/>
+  <property name="project.version" value="0.97"/>
+
+  <!-- tool configuration -->
+<!--  <property name="build.compiler" value="jikes"/>-->
+  <property name="compile.optimize" value="on"/>
+  <property name="compile.debug" value="off"/>
+
+  <!-- names of directories and important files -->
+  <property name="dist.dir.prefix" value="${ant.project.name}"/>
+  <property name="dist.dir" value="${dist.dir.prefix}${project.version}"/>
+  <property name="dist.src.dir" value="${dist.dir}/src"/>
+  <property name="dist.doc.dir" value="${dist.dir}/doc"/>
+  <property name="dist.apidoc.dir" value="${dist.doc.dir}/api"/>
+  <property name="dist.file.prefix" value="${project.main.package}-${project.version}"/>
+  <property name="src.dir" value="src"/>
+  <property name="build.dir" value="build"/>
+  <property name="doc.dir" value="doc"/>
+  <property name="apidoc.dir" value="${doc.dir}/api"/>
+  <property name="license.dir" value="licenses"/>
+  <property name="css.file" value="${doc.dir}/recoder.css"/>
+  <property name="jar.file" value="${project.main.package}.jar"/>
+
+  <property name="tests.dir" value="test"/>
+  <property name="tests.src.dir" value="${tests.dir}/src"/>
+  <property name="tests.build.dir" value="${tests.dir}/build"/>
+  <property name="tests.jar.file" value="${tests.dir}/tests.jar"/>
+
+  <property name="examples.dir" value="${doc.dir}/examples"/>
+  <property name="examples.src.dir" value="${examples.dir}/src"/>
+  <property name="examples.build.dir" value="${examples.dir}/build"/>
+  <property name="examples.jar.file" value="recoder-examples.jar"/>
+  <property name="examples.resources.path" value="sourcerer/resources"/>
+	
+  <property name="libs.dir" value="lib"/>
+  <property name="junit.lib.jar" value="${libs.dir}/junit.jar"/>
+  <property name="bsh.jar" value="${libs.dir}/bsh-1.2b2.jar"/>
+  <property name="asm.lib.jar" value="${libs.dir}/asm-all-4.1.jar"/>
+	
+
+
+  <!-- check completeness of classpath, create directories -->
+  <target name="init">
+    <!--antstructure output="project.dtd"/-->
+    <available property="jdk1.2+available" classname="java.lang.ThreadLocal"/>
+    <available property="jdk1.3+available" classname="java.lang.StrictMath"/>
+    <available property="jdk1.4+available" classname="java.lang.CharSequence"/>
+    <tstamp/>
+    <mkdir dir="${build.dir}"/>
+    <mkdir dir="${apidoc.dir}"/>
+  </target>
+
+  <target name="build" depends="init" description="compiles the sources">
+    <javac srcdir="${src.dir}" destdir="${build.dir}" optimize="${compile.optimize}" debug="${compile.debug}"/>
+  </target>
+
+  <target name="jar" depends="build" description="creates the jar file">
+    <jar jarfile="${jar.file}">
+    	<fileset dir="${build.dir}">
+    		<include name="recoder/**"/>
+    		<include name="net/sf/retrotranslator/transformer/"/>
+    	</fileset>
+    </jar>
+  </target>
+
+  <target name="dist" depends="clean.dist,buildall" description="creates a distribution">
+    <mkdir dir="${dist.dir}"/>
+    <mkdir dir="${dist.src.dir}"/>
+    <mkdir dir="${dist.doc.dir}"/>
+    <delete dir="${examples.build.dir}"/> <!-- patch -->
+    <copy todir="${dist.src.dir}">
+      <fileset dir="${src.dir}"/>
+    </copy>
+  	<copy todir="${dist.src.dir}">
+  		<fileset dir="${tests.src.dir}"/>	
+  	</copy>
+    <copy todir="${dist.apidoc.dir}">
+      <fileset dir="${apidoc.dir}"/>
+    </copy>
+  	<copy todir="${dist.dir}/${libs.dir}">
+  	  <fileset dir="${libs.dir}"/>
+  	</copy>
+    <copy todir="${dist.dir}">
+      <fileset dir="${basedir}">
+        <include name="${examples.jar.file}"/>
+        <include name="${jar.file}"/>
+        <!--<include name="index.html"/>-->
+        <include name="build.xml"/>
+        <include name="README.txt"/>
+      	<include name="Changelog.txt"/>
+      </fileset>
+    </copy> 
+  	<copy todir="${dist.dir}/${license.dir}">
+  		<fileset dir="${license.dir}"/>
+  	</copy>
+    <delete> <!-- patch -->
+       <fileset dir="${dist.dir}" includes="**/Makefile"/>
+    </delete>
+    <!-- zip and tar bzip2 -->
+    <zip zipfile="${dist.file.prefix}.zip" basedir="." includes="${dist.dir}/**" excludes="${dist.doc.dir}/**" />
+    <zip zipfile="${dist.file.prefix}-apidoc.zip" basedir="." includes="${dist.apidoc.dir}/**" />
+    <!--<tar tarfile="${dist.file.prefix}.tar" basedir="." includes="${dist.dir}/**" excludes="${dist.doc.dir}/**" longfile="gnu"/>
+    <tar tarfile="${dist.file.prefix}-apidoc.tar" basedir="." includes="${dist.apidoc.dir}/**" longfile="gnu"/>
+    <apply executable="bzip2">  
+      <srcfile/>
+      <fileset dir="." includes="${dist.file.prefix}.tar,${dist.file.prefix}-apidoc.tar"/>
+    </apply> -->
+  </target>
+
+  <target name="clean.dist">
+    <delete dir="${dist.dir}"/>
+    <delete file="${dist.file.prefix}.zip"/>
+    <delete file="${dist.file.prefix}-apidoc.zip"/>
+    <delete file="${dist.file.prefix}.tar.bz2"/>
+    <delete file="${dist.file.prefix}-apidoc.tar.bz2"/>
+  </target>
+
+  <target name="clean" depends="clean.tests,clean.dist" description="cleans up primary auxiliary files and directories">
+    <delete includeEmptyDirs="true" quiet="true">
+      <fileset dir="${build.dir}" includes="**/*" defaultexcludes="no"/>
+    </delete>
+    <delete file="${jar.file}"/>
+  </target>
+
+  <target name="cleanall" depends="clean,clean.apidoc,clean.examples" description="cleans up everything that can be rebuild"/>
+
+  <target name="buildall" depends="build,jar.examples,jar.tests,build.apidoc" description="builds everything except a distribution"/>
+
+  <target name="tarball" depends="cleanall" description="creates a tarball with all developer files">
+    <tar tarfile="../${dist.file.prefix}-devel.tar" longfile="gnu">
+      <tarfileset dir="." defaultexcludes="no"/>
+    </tar>
+    <apply executable="bzip2">  
+      <!-- arg value="\-\-force" -->
+      <srcfile/>
+      <fileset dir=".." includes="${dist.file.prefix}-devel.tar"/>
+    </apply>
+    <!--gzip src="../${dist.file.prefix}-devel.tar" zipfile="../${dist.file.prefix}-devel.tar.gz"/>
+    <delete file="../${dist.file.prefix}-devel.tar"/-->
+  </target>
+
+  <!-- API Doc -->
+
+  <target name="build.apidoc1.3" depends="init" unless="jdk1.4+available">
+    <echo message="JDK 1.4 required for JavaDoc to create source links. Omitting source links for now."/>
+    <javadoc sourcepath="${src.dir}" destdir="${apidoc.dir}" maxmemory="96M"
+	     packagenames="recoder.*"
+	     author="yes" noindex="true" notree="true" nohelp="true"
+	     stylesheetfile="${css.file}"
+	     windowtitle="${ant.project.name} Library ${project.version}"
+	     doctitle="${ant.project.name} ${project.version} Library Specification"
+	     header="${ant.project.name} ${project.version}"
+    />
+  </target>
+
+  <target name="build.apidoc" depends="build.apidoc1.3" if="jdk1.4+available" description="generates the API docs">
+    <javadoc sourcepath="${src.dir}" destdir="${apidoc.dir}" maxmemory="96M"
+    	 packagenames="recoder.*"
+	     author="yes" noindex="true" notree="true" nohelp="true"
+	     stylesheetfile="${css.file}"
+	     windowtitle="${ant.project.name} Library ${project.version}"
+	     doctitle="${ant.project.name} ${project.version} Library Specification"
+	     header="${ant.project.name} ${project.version}"
+	     additionalparam="-linksource -subpackages ${project.main.package}"
+    />
+  </target>
+
+  <target name="clean.apidoc" description="cleans the API docs">
+    <delete includeEmptyDirs="true" quiet="true">
+      <fileset dir="${apidoc.dir}" excludes="**/Makefile"/>
+    </delete>
+  </target>
+
+  <!-- Tests -->
+
+  <target name="init.tests">
+    <mkdir dir="${tests.build.dir}"/>
+  </target>
+
+  <target name="build.tests" depends="jar,init.tests">
+    <javac srcdir="${tests.src.dir}" destdir="${tests.build.dir}"
+           optimize="${compile.optimize}" debug="${compile.debug}"
+	   classpath="${jar.file}:${junit.lib.jar}:${asm.lib.jar}:${examples.build.dir}" excludes="**/invalid/**"  encoding="Cp1252"/>
+  </target>
+
+  <target name="jar.tests" depends="build.tests">
+    <jar jarfile="${tests.jar.file}" basedir="${tests.build.dir}"/>
+  </target>
+
+  <target name="run.tests" depends="jar.tests" description="runs regression tests">
+    <java fork="true" classpath="${tests.jar.file}:${jar.file}:${tests.dir}:${junit.lib.jar}" classname="recoder.testsuite.CompleteTestSuite">
+<!--      <arg value="${tests.dir}/standard.tst"/>
+      <arg value="${tests.dir}/collections.prj"/>-->
+    </java>    
+  </target>
+
+  <target name="clean.tests">
+    <delete includeEmptyDirs="true" quiet="true">
+      <fileset dir="${tests.build.dir}" includes="**/*" defaultexcludes="no"/>
+    </delete>
+    <delete file="${tests.jar.file}"/>
+  </target>
+
+  <!-- Examples -->
+
+  <target name="init.examples">
+    <mkdir dir="${examples.build.dir}"/>
+<!--    <available property="bsh_available" classname="bsh.Interpreter" />    -->
+  </target>
+
+<!--  <target name="ensure.bsh" depends="init.examples" unless="bsh_available">
+    <fail message="BeanShell required in classpath to compile examples"/>
+  </target>-->
+
+  <target name="build.examples" depends="jar,init.examples"> <!--ensure.bsh-->
+    <javac srcdir="${examples.src.dir}" destdir="${examples.build.dir}"
+           optimize="${compile.optimize}" debug="${compile.debug}"
+	   classpath="${jar.file}:${bsh.jar}"  encoding="Cp1252"/>
+    <copy todir="${examples.build.dir}/${examples.resources.path}">
+       <fileset dir="${examples.src.dir}/${examples.resources.path}"/>
+    </copy>
+  </target>
+
+  <target name="jar.examples" depends="build.examples">
+    <jar jarfile="${examples.jar.file}" basedir="${examples.build.dir}"/>
+  </target>
+
+  <target name="run.examples" depends="jar.examples" description="runs demo program">
+    <java fork="true" classpath="${examples.jar.file}:${jar.file}" classname="sourcerer.Main">
+      <arg value="${examples.dir}/converter.prj"/>
+    </java>    
+  </target>
+
+  <target name="clean.examples">
+    <delete includeEmptyDirs="true" quiet="true">
+      <fileset dir="${examples.build.dir}" includes="**/*" defaultexcludes="no"/>
+    </delete>
+    <delete file="${examples.jar.file}"/>
+  </target>
+
+</project>

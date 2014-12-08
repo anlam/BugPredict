@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: TestPlugin
+Bundle-SymbolicName: BugPredict
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: testplugin.Activator
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ org.eclipse.jdt.core;bundle-version="3.10.0",
+ org.tmatesoft.sqljet;bundle-version="1.1.10",
+ org.tmatesoft.svnkit;bundle-version="1.8.6"
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-ActivationPolicy: lazy
