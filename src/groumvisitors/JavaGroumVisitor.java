@@ -249,7 +249,7 @@ PropertyNames {
 	public List<String> stringLiteralList = new ArrayList<String>();
 	
 	public List<String> API = new ArrayList<String>(); //TypeRef, PackageRef and MethodCall
-	
+	public List<String> typeReferenceList = new ArrayList<String>();
 	public int countMethod = 0;
 
 	int isAddToMethodLexList = 0;
@@ -465,6 +465,7 @@ PropertyNames {
 		identifierList.clear();
 		commentList.clear();
 		stringLiteralList.clear();
+		typeReferenceList.clear();
 		API.clear();
 
 		try {
@@ -1526,6 +1527,12 @@ PropertyNames {
 	{
 		
 		//API.add(Naming.toPathName(x));
+		String typeref = x.getName();
+		if(!typeReferenceList.contains(typeref))
+		{
+			typeReferenceList.add(typeref);
+			//System.out.println(typeref);
+		}
 		
 		try
 		{

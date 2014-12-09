@@ -18,6 +18,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
+import apidescription.APIDescription;
+import apidescription.APIDescriptionReader;
+
 import com.aliasi.tokenizer.EnglishStopTokenizerFactory;
 import com.aliasi.tokenizer.LowerCaseTokenizerFactory;
 import com.aliasi.tokenizer.PorterStemmerTokenizerFactory;
@@ -53,6 +56,7 @@ public class FeatureExtraction {
 	static LinkedHashMap<String, LinkedHashMap<Integer, Integer>> fileNameIdentifierCountMap = new LinkedHashMap<>();
 	static LinkedHashMap<String, LinkedHashMap<Integer, Integer>> fileNameCommentCountMap = new LinkedHashMap<>();
 	static LinkedHashMap<String, LinkedHashMap<Integer, Integer>> fileNameAPICountMap = new LinkedHashMap<>();
+	static LinkedHashMap<String, LinkedHashMap<Integer, Integer>> fileNameAPIDesCountMap = new LinkedHashMap<>();
 	
 	static LinkedHashMap<String, Integer> identifierDictionaryIdMap = new LinkedHashMap<>();
 	static LinkedHashMap<Integer, String> idIdenditiferDictionaryMap = new LinkedHashMap<>();
@@ -63,6 +67,14 @@ public class FeatureExtraction {
 	
 	static LinkedHashMap<String, Integer> APIDictionaryIdMap = new LinkedHashMap<>();
 	static LinkedHashMap<Integer, String> idAPIDictionaryMap = new LinkedHashMap<>();
+	
+	static LinkedHashMap<String, Integer> APIDesDictionaryIdMap = new LinkedHashMap<>();
+	static LinkedHashMap<Integer, String> idAPIDesDictionaryMap = new LinkedHashMap<>();
+	
+	
+	static String projectSourcePath="dataset/org.aspectj";
+	static String projectAPIDesPath="dataset/aspectj_api.csv";
+	static String projectBugPath="dataset/aspectj_bug.csv";
 	
 	static int numMethods = 0;
 	static int numFiles = 0;
@@ -400,7 +412,7 @@ public class FeatureExtraction {
 	
 	
 	//parsing each file in project
-	public static void testParsing(String project, String codedir)
+	public static void testParsing(String project, String codedir, String api_desPath)
 	{
 		//LinkedHashMap<String, LinkedHashMap<Integer, Integer>> projectFilenameCountMap = new LinkedHashMap<>();
 		String javaDirPath = project + "/";
@@ -424,6 +436,10 @@ public class FeatureExtraction {
 			LinkedHashMap<String, Integer> APITermCountMap = getAPITermMap(javaGroumVisitor);
 			LinkedHashMap<Integer, Integer> fileNameAPITermCountMap = getFileNameCountMap(APITermCountMap, APIDictionaryIdMap, idAPIDictionaryMap);
 			fileNameAPICountMap.put(file.getAbsolutePath(), fileNameAPITermCountMap);
+			
+			LinkedHashMap<String, Integer> APIDesTermCountMap = getAPIDescriptionTerm(javaGroumVisitor, api_desPath);
+			LinkedHashMap<Integer, Integer> fileNameAPIDesTermCountMap = getFileNameCountMap(APIDesTermCountMap, APIDesDictionaryIdMap, idAPIDesDictionaryMap);
+			fileNameAPIDesCountMap.put(file.getAbsolutePath(), fileNameAPIDesTermCountMap);
 			
 		}
 		//return projectFilenameCountMap;
@@ -455,6 +471,7 @@ public class FeatureExtraction {
 		//return projectFilenameCountMap;
 	}
 		
+	
 	//Updating dictionary
 	private static LinkedHashMap<Integer, Integer> getFileNameCountMap(LinkedHashMap<String, Integer> nameCountMap, 
 																	   LinkedHashMap<String, Integer> dictionaryIDMap,
@@ -515,28 +532,7 @@ public class FeatureExtraction {
 							}
 						}
 					}								
-				}
-				
-				/*for(String fullname : javaGroumVisitor.stringLiteralList)
-				{
-					if(fullname != null && !fullname.isEmpty())
-					{
-						//System.out.println(fullname);
-						List<String> allName = getAllNames(fullname);						
-						for(String name : allName)
-						{
-							if(nameCountMap.containsKey(name))
-							{
-								int count = nameCountMap.get(name);
-								nameCountMap.put(name, count+1);
-							}
-							else
-							{
-								nameCountMap.put(name, 1);
-							}
-						}
-					}
-				}*/				
+				}			
 			dumpNameCountMap("IdentifierTerm.txt", nameCountMap);
 			return nameCountMap;
 
@@ -586,14 +582,14 @@ public class FeatureExtraction {
 			
 			
 			//remove stopword and stemming
-			String regex = "[a-zA-Z]+|[0-9]+|\\S";
+			/*String regex = "[a-zA-Z]+|[0-9]+|\\S";
 			 TokenizerFactory tf = new RegExTokenizerFactory(regex);
 		     tf = new LowerCaseTokenizerFactory(tf);
 		     tf = new EnglishStopTokenizerFactory(tf);
 		     tf  = new PorterStemmerTokenizerFactory(tf);
 		     char[] cs = comment.toCharArray();
-		     Tokenizer tokenizer = tf.tokenizer(cs,0,cs.length);
-			for(String name : tokenizer.tokenize())
+		     Tokenizer tokenizer = tf.tokenizer(cs,0,cs.length);*/
+			for(String name : RemoveStopWordsAndStemmer(comment))
 			{
 				if(ret.containsKey(name))
 				{
@@ -625,6 +621,19 @@ public class FeatureExtraction {
 			return ret;
 		}
 		
+		
+		private static String[] RemoveStopWordsAndStemmer(String sentences)
+		{
+			 String regex = "[a-zA-Z]+|[0-9]+|\\S";
+			 TokenizerFactory tf = new RegExTokenizerFactory(regex);
+		     tf = new LowerCaseTokenizerFactory(tf);
+		     tf = new EnglishStopTokenizerFactory(tf);
+		     tf  = new PorterStemmerTokenizerFactory(tf);
+		     char[] cs = sentences.toCharArray();
+		     Tokenizer tokenizer = tf.tokenizer(cs,0,cs.length);
+		     return tokenizer.tokenize();
+		}
+		
 		private static String normalizeComment(List<String> comments, String ret)
 		{
 			for(String cmt : comments)
@@ -646,8 +655,50 @@ public class FeatureExtraction {
 				ret.addAll(terms);
 			}
 			
+			
+			
 			return ret;
 		}
+		
+		
+		public static LinkedHashMap<String, Integer> getAPIDescriptionTerm(JavaGroumVisitor javaGroumVisitor, String apiDesPath)
+		{
+			LinkedHashMap<String, Integer> ret = new LinkedHashMap<>();	
+			List<String> typeRef = javaGroumVisitor.typeReferenceList;
+			LinkedHashMap<String, APIDescription> apiDes = APIDescriptionReader.readAPIToMap(apiDesPath);
+			String typeDes = "";
+			for(String type : typeRef)
+			{
+				if(apiDes.containsKey(type))
+				{
+					//System.out.println("found type: " + type);
+					typeDes = typeDes + " " + apiDes.get(type).description;
+				}
+			}
+						
+			List<String> StringTerms = getAllNames(typeDes.replaceAll("[^A-Za-z0-9]", " "));
+			
+			typeDes = normalizeComment(StringTerms, "");
+			
+			
+			for(String name : RemoveStopWordsAndStemmer(typeDes))
+			{
+				if(ret.containsKey(name))
+				{
+					int count = ret.get(name);
+					ret.put(name, count+1);
+				}
+				else
+				{
+					ret.put(name, 1);
+				}
+			}
+			
+			dumpNameCountMap("APIDesTerm.txt", ret);
+			
+			return ret;
+		}
+		
 		
 		public static void dumpNameCountMap(String filePath, LinkedHashMap<String, Integer> nameCountMap)
 		{
@@ -719,7 +770,7 @@ public class FeatureExtraction {
 		}
 	}
 
-	static ArrayList<String> getAllNames(String fullName){
+	public static ArrayList<String> getAllNames(String fullName){
 		ArrayList<String> allNames = new ArrayList<>();
 
 		if (fullName==null)
