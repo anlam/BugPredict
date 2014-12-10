@@ -34,8 +34,10 @@ import data.MethodInfo;
 import data.TypeInfo;
 import dirtool.DirProcessing;
 import repository.SnapshotCreation;
+import utils.DumpToFileUtils;
 import utils.FileUtils;
 import utils.Logger;
+import utils.NLPUtils;
 import utils.PrintingUtils;
 
 /**
@@ -421,6 +423,7 @@ public class FeatureExtraction {
 		
 		String[] javaSourceFileExt = new String[] { ".java" };
 
+		LinkedHashMap<String, APIDescription> apiDes = APIDescriptionReader.readAPIToMap(api_desPath);
 		List<File> javaFiles = DirProcessing.getFilteredRecursiveFiles(
 														new File(codedir), javaSourceFileExt);
 		for(File file : javaFiles)
@@ -437,12 +440,49 @@ public class FeatureExtraction {
 			LinkedHashMap<Integer, Integer> fileNameAPITermCountMap = getFileNameCountMap(APITermCountMap, APIDictionaryIdMap, idAPIDictionaryMap);
 			fileNameAPICountMap.put(file.getAbsolutePath(), fileNameAPITermCountMap);
 			
-			LinkedHashMap<String, Integer> APIDesTermCountMap = getAPIDescriptionTerm(javaGroumVisitor, api_desPath);
+			LinkedHashMap<String, Integer> APIDesTermCountMap = getAPIDescriptionTerm(javaGroumVisitor, apiDes);
 			LinkedHashMap<Integer, Integer> fileNameAPIDesTermCountMap = getFileNameCountMap(APIDesTermCountMap, APIDesDictionaryIdMap, idAPIDesDictionaryMap);
 			fileNameAPIDesCountMap.put(file.getAbsolutePath(), fileNameAPIDesTermCountMap);
 			
 		}
 		//return projectFilenameCountMap;
+	}
+	
+	
+	public static JavaGroumVisitor projectSourceParsing(String project)
+	{
+		String javaDirPath = project + "/";
+		JavaGroumVisitor javaGroumVisitor = new JavaGroumVisitor();
+		javaGroumVisitor.dirParsing(javaDirPath);
+		return javaGroumVisitor;
+	}
+	
+	public static List<LinkedHashMap<Integer, Integer>> ExtractFileFeatures(File file, String filePath, 
+																			JavaGroumVisitor javaGroumVisitor,
+																			LinkedHashMap<String, APIDescription> apiDes)
+	{
+		List<LinkedHashMap<Integer, Integer>> ret = new ArrayList<>();
+		LinkedHashMap<String, Integer> nameCountMap = doFileParsing(file, javaGroumVisitor);
+		LinkedHashMap<Integer, Integer> fileNameCountMap = getFileNameCountMap(nameCountMap, identifierDictionaryIdMap, idIdenditiferDictionaryMap);
+		fileNameIdentifierCountMap.put(filePath, fileNameCountMap);
+		ret.add(fileNameCountMap);
+		
+		LinkedHashMap<String, Integer> commentTermCountMap = getCommentTermMap(javaGroumVisitor);
+		LinkedHashMap<Integer, Integer> fileNameCommentTermCountMap = getFileNameCountMap(commentTermCountMap, commentDictionaryIdMap, idcommentDictionaryMap);
+		fileNameCommentCountMap.put(filePath, fileNameCommentTermCountMap);
+		ret.add(fileNameCommentTermCountMap);
+		
+		LinkedHashMap<String, Integer> APITermCountMap = getAPITermMap(javaGroumVisitor);
+		LinkedHashMap<Integer, Integer> fileNameAPITermCountMap = getFileNameCountMap(APITermCountMap, APIDictionaryIdMap, idAPIDictionaryMap);
+		fileNameAPICountMap.put(filePath, fileNameAPITermCountMap);
+		ret.add(fileNameAPITermCountMap);
+		
+		LinkedHashMap<String, Integer> APIDesTermCountMap = getAPIDescriptionTerm(javaGroumVisitor, apiDes);
+		LinkedHashMap<Integer, Integer> fileNameAPIDesTermCountMap = getFileNameCountMap(APIDesTermCountMap, APIDesDictionaryIdMap, idAPIDesDictionaryMap);
+		fileNameAPIDesCountMap.put(filePath, fileNameAPIDesTermCountMap);
+		ret.add(fileNameAPIDesTermCountMap);
+		
+		return ret;
 	}
 	
 	//parsing each file in project
@@ -533,7 +573,7 @@ public class FeatureExtraction {
 						}
 					}								
 				}			
-			dumpNameCountMap("IdentifierTerm.txt", nameCountMap);
+			DumpToFileUtils.dumpNameCountMap("IdentifierTerm.txt", nameCountMap);
 			return nameCountMap;
 
 		}
@@ -566,7 +606,7 @@ public class FeatureExtraction {
 				}								
 			}
 			
-			dumpNameCountMap("APITerm.txt", ret);
+			DumpToFileUtils.dumpNameCountMap("APITerm.txt", ret);
 			return ret;
 		}
 		
@@ -589,7 +629,7 @@ public class FeatureExtraction {
 		     tf  = new PorterStemmerTokenizerFactory(tf);
 		     char[] cs = comment.toCharArray();
 		     Tokenizer tokenizer = tf.tokenizer(cs,0,cs.length);*/
-			for(String name : RemoveStopWordsAndStemmer(comment))
+			for(String name : NLPUtils.RemoveStopWordsAndStemmer(comment))
 			{
 				if(ret.containsKey(name))
 				{
@@ -616,13 +656,13 @@ public class FeatureExtraction {
 				}
 			}*/
 			
-			dumpNameCountMap("commentTerm.txt", ret);
+			DumpToFileUtils.dumpNameCountMap("commentTerm.txt", ret);
 			
 			return ret;
 		}
 		
 		
-		private static String[] RemoveStopWordsAndStemmer(String sentences)
+		/*private static String[] RemoveStopWordsAndStemmer(String sentences)
 		{
 			 String regex = "[a-zA-Z]+|[0-9]+|\\S";
 			 TokenizerFactory tf = new RegExTokenizerFactory(regex);
@@ -632,7 +672,7 @@ public class FeatureExtraction {
 		     char[] cs = sentences.toCharArray();
 		     Tokenizer tokenizer = tf.tokenizer(cs,0,cs.length);
 		     return tokenizer.tokenize();
-		}
+		}*/
 		
 		private static String normalizeComment(List<String> comments, String ret)
 		{
@@ -661,11 +701,11 @@ public class FeatureExtraction {
 		}
 		
 		
-		public static LinkedHashMap<String, Integer> getAPIDescriptionTerm(JavaGroumVisitor javaGroumVisitor, String apiDesPath)
+		public static LinkedHashMap<String, Integer> getAPIDescriptionTerm(JavaGroumVisitor javaGroumVisitor, LinkedHashMap<String, APIDescription> apiDes)
 		{
 			LinkedHashMap<String, Integer> ret = new LinkedHashMap<>();	
 			List<String> typeRef = javaGroumVisitor.typeReferenceList;
-			LinkedHashMap<String, APIDescription> apiDes = APIDescriptionReader.readAPIToMap(apiDesPath);
+			
 			String typeDes = "";
 			for(String type : typeRef)
 			{
@@ -681,7 +721,7 @@ public class FeatureExtraction {
 			typeDes = normalizeComment(StringTerms, "");
 			
 			
-			for(String name : RemoveStopWordsAndStemmer(typeDes))
+			for(String name : NLPUtils.RemoveStopWordsAndStemmer(typeDes))
 			{
 				if(ret.containsKey(name))
 				{
@@ -694,34 +734,13 @@ public class FeatureExtraction {
 				}
 			}
 			
-			dumpNameCountMap("APIDesTerm.txt", ret);
+			DumpToFileUtils.dumpNameCountMap("APIDesTerm.txt", ret);
 			
 			return ret;
 		}
 		
 		
-		public static void dumpNameCountMap(String filePath, LinkedHashMap<String, Integer> nameCountMap)
-		{
-			Logger.initDebug(filePath);
-			for(String name: nameCountMap.keySet())
-			{		
-				//System.out.println(name + ":= " + nameCountMap.get(name));
-				Logger.logDebug(name + ":= " + nameCountMap.get(name));
-			}
-			Logger.closeDebug();
-			
-		}
-		
-		public static void dumpListToFile(String filePath, List<String> list)
-		{
-			Logger.initDebug(filePath);
-			for(String name: list)
-			{		
-				//System.out.println(name + ":= " + nameCountMap.get(name));
-				Logger.logDebug(name);
-			}
-			Logger.closeDebug();
-		}
+
 	
 	public static long getLOCsMethod (MethodInfo method){
 		long LOCs = 0;

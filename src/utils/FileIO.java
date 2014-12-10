@@ -251,4 +251,12 @@ public class FileIO {
 		return allFiles;
 	}
 	
+	public static int getNumOfLines(String fileContent) {
+		int c = 0;
+		for (int i = 0; i < fileContent.length(); i++)
+			if (fileContent.charAt(i) == '\n')
+				c++;
+		return c;
+	}
+	
 }

@@ -1,27 +1,22 @@
 package main;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import utils.Logger;
-
-import com.aliasi.tokenizer.EnglishStopTokenizerFactory;
-import com.aliasi.tokenizer.LowerCaseTokenizerFactory;
-import com.aliasi.tokenizer.PorterStemmerTokenizerFactory;
-import com.aliasi.tokenizer.RegExTokenizerFactory;
-import com.aliasi.tokenizer.Tokenizer;
-import com.aliasi.tokenizer.TokenizerFactory;
-
+import utils.DumpToFileUtils;
+import utils.NLPUtils;
 import bug.BugReport;
 import bug.BugReportReader;
 
 public class ExtractBugReportFeature 
 {
-	static LinkedHashMap<String, LinkedHashMap<Integer, Integer>> BugIDTermVectorDictionary = new LinkedHashMap<>();
+	static public LinkedHashMap<String, LinkedHashMap<Integer, Integer>> BugIDTermVectorDictionary = new LinkedHashMap<>();
 	
-	static LinkedHashMap<String, Integer> BugTermToIDDictionaryMap = new LinkedHashMap<>();
-	static LinkedHashMap<Integer, String> IDToBugTermDictionaryMap = new LinkedHashMap<>();
+	static public  LinkedHashMap<String, Integer> BugTermToIDDictionaryMap = new LinkedHashMap<>();
+	static public LinkedHashMap<Integer, String> IDToBugTermDictionaryMap = new LinkedHashMap<>();
 	static String projectBugPath="dataset/aspectj_bug.csv";
+	public static List<BugReport> bugReports = new ArrayList<>();
 
 	public static LinkedHashMap<String, Integer> bugTokenizer(BugReport bug)
 	{
@@ -32,7 +27,7 @@ public class ExtractBugReportFeature
 		bugcontent = conncatToString(StringTerms, "");
 		
 		
-		for(String name : RemoveStopWordsAndStemmer(bugcontent))
+		for(String name : NLPUtils.RemoveStopWordsAndStemmer(bugcontent))
 		{
 			if(ret.containsKey(name))
 			{
@@ -45,16 +40,19 @@ public class ExtractBugReportFeature
 			}
 		}
 		
-		dumpNameCountMap("TestBugTerm/" + bug.bug_id+".txt", ret);
+		DumpToFileUtils.dumpNameCountMap("TestBugTerm/" + bug.bug_id+".txt", ret);
 		
 		return ret;
 	}
 	
 	public static void extractBugReportsToVectors(String datapath)
 	{
-		List<BugReport> bugreports =  BugReportReader.readAPI(datapath);
-		for(BugReport bug : bugreports)
+		bugReports =  BugReportReader.readAPI(datapath);
+		for(BugReport bug : bugReports)
 		{
+			if(BugIDTermVectorDictionary.containsKey(bug.bug_id))
+				continue;
+			
 			LinkedHashMap<String, Integer> bugTermCountMap =  bugTokenizer(bug);
 			LinkedHashMap<Integer, Integer> bugTermIDCountMap = getFileNameCountMap(bugTermCountMap, BugTermToIDDictionaryMap, IDToBugTermDictionaryMap);
 			BugIDTermVectorDictionary.put(bug.bug_id, bugTermIDCountMap);
@@ -89,17 +87,7 @@ public class ExtractBugReportFeature
 		return fileNameCountMap;
 	}
 	
-	public static void dumpNameCountMap(String filePath, LinkedHashMap<String, Integer> nameCountMap)
-	{
-		Logger.initDebug(filePath);
-		for(String name: nameCountMap.keySet())
-		{		
-			//System.out.println(name + ":= " + nameCountMap.get(name));
-			Logger.logDebug(name + ":= " + nameCountMap.get(name));
-		}
-		Logger.closeDebug();
-		
-	}
+
 	
 	private static String conncatToString(List<String> comments, String ret)
 	{
@@ -110,17 +98,7 @@ public class ExtractBugReportFeature
 		return ret;
 	}
 	
-	private static String[] RemoveStopWordsAndStemmer(String sentences)
-	{
-		 String regex = "[a-zA-Z]+|[0-9]+|\\S";
-		 TokenizerFactory tf = new RegExTokenizerFactory(regex);
-	     tf = new LowerCaseTokenizerFactory(tf);
-	     tf = new EnglishStopTokenizerFactory(tf);
-	     tf  = new PorterStemmerTokenizerFactory(tf);
-	     char[] cs = sentences.toCharArray();
-	     Tokenizer tokenizer = tf.tokenizer(cs,0,cs.length);
-	     return tokenizer.tokenize();
-	}
+
 	
 	public static void main(String[] args) 
 	{
