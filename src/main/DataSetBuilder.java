@@ -9,41 +9,48 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-import org.eclipse.jdt.internal.compiler.lookup.ExtraCompilerModifiers;
+
+
 
 import repository.GitConnector;
+import utils.Logger;
 import apidescription.APIDescription;
 import apidescription.APIDescriptionReader;
 import bug.BugReport;
 
 public class DataSetBuilder 
 {
-	public static String projectBugPath="dataset/aspectj_bug.csv";
-	public static String projectSourcePath="dataset/org.aspectj";
-	public static String sourceFolder="dataset/aspectj_testParse";
-	public static String projectAPIDesPath="dataset/aspectj_api.csv";
+	public static String projectBugPath="/home/anlam/workspace/dataset/aspectj_bug.csv";
+	public static String projectSourcePath="/home/anlam/workspace/dataset/org.aspectj";
+	public static String sourceFolder="/home/anlam/workspace/dataset/aspectj_testParse";
+	public static String projectAPIDesPath="/home/anlam/workspace/dataset/aspectj_api.csv";
+	public static String commitFiles = "/home/anlam/workspace/dataset/CommitFiles";
 	public static LinkedHashMap<String, APIDescription> apiDes = new LinkedHashMap<>();
 	
 	public static LinkedHashMap<String, LinkedHashMap<String, List<LinkedHashMap<Integer, Integer>>>> possitiveDataSet = new LinkedHashMap<>();
 
 	public static void buildDataSet()
 	{
+		Logger.initDebug("ErrorFile.txt");
 		System.out.println("ExtractBugReportFeature....");
 		ExtractBugReportFeature.extractBugReportsToVectors(projectBugPath);
 		System.out.println("ProjectSourceParsing....");
 		JavaGroumVisitor javagroum = FeatureExtraction.projectSourceParsing(projectSourcePath);
-		GitConnector gitConn = new GitConnector("projectSourcePath" + "/.git");
+		//GitConnector gitConn = new GitConnector(projectSourcePath + "/.git");
 		System.out.println("ReadAPIToMap....");
 		apiDes = APIDescriptionReader.readAPIToMap(projectAPIDesPath);
-		if (gitConn.connect()) 
+		//if (gitConn.connect()) 
 		{
+			//gitConn.getFileChanges(".java");
 			for(BugReport bug : ExtractBugReportFeature.bugReports)
 			{
 				System.out.println(bug.bug_id);
+				LinkedHashMap<String, List<LinkedHashMap<Integer, Integer>>> bugFilesMap = FeatureExtraction.ExtractFilesInFolder(commitFiles + "/" + bug.commit, bug.files, javagroum, apiDes);
 				
-				LinkedHashMap<String, List<LinkedHashMap<Integer, Integer>>> bugFilesMap = new LinkedHashMap<>();
-				LinkedHashMap<String, String> files = gitConn.getFileContent(bug.commit + "^1", bug.files, ".java");
-				if(files == null)
+				//LinkedHashMap<String, List<LinkedHashMap<Integer, Integer>>> bugFilesMap = new LinkedHashMap<>();
+				//LinkedHashMap<String, String> files = gitConn.getFileContent(bug.commit , bug.files, ".java");
+				/*LinkedHashMap<String, String> files = gitConn.getChangedFileContent(bug.commit);
+				if(files == null||files.isEmpty())
 					continue;
 				for(String filename : files.keySet())
 				{
@@ -65,10 +72,11 @@ public class DataSetBuilder
 						e.printStackTrace();
 						//return;
 					} 
-				}
+				}*/
 				possitiveDataSet.put(bug.bug_id, bugFilesMap);
 			}
 		}
+		Logger.closeDebug();
 		
 	}
 	

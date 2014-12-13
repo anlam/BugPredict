@@ -2,6 +2,7 @@ package repository;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -36,7 +37,8 @@ import org.eclipse.jgit.util.io.NullOutputStream;
 import utils.FileIO;
 import utils.Logger;
 
-public class GitConnector extends VCSConnector {
+public class GitConnector extends VCSConnector 
+{
 	private String url;
 	private int numberOfCommits = -1, numberOfCodeCommits = -1;
 	
@@ -62,6 +64,9 @@ public class GitConnector extends VCSConnector {
 	public int getNumberOfCodeCommits() {
 		return numberOfCodeCommits;
 	}
+	
+	//Just Get the oldversion of the commit
+	private LinkedHashMap<String, LinkedHashMap<String, String>> CommitChangeFileMap = new LinkedHashMap<String, LinkedHashMap<String,String>>();
 
 	public boolean connect() {
 		FileRepositoryBuilder builder = new FileRepositoryBuilder();
@@ -84,6 +89,91 @@ public class GitConnector extends VCSConnector {
 		} catch (GitAPIException e) {
 			System.err.println(e.getMessage());
 			return null;
+		}
+	}
+	
+	public void ExtractFileChangesInAllCommit(String extension, String outputFolder) 
+	{
+		Iterable<RevCommit> commits = null;
+		try {
+			commits = git.log().call();
+		} catch (GitAPIException e) {
+			System.err.println(e.getMessage());
+		}
+		if (commits == null) return;
+		for (RevCommit commit : commits) {
+			if (commit.getParentCount() > 0) {
+				RevWalk rw = new RevWalk(repository);
+				RevCommit parent = null;
+				try {
+					parent = rw.parseCommit(commit.getParent(0).getId());
+				} catch (IOException e) {
+					System.err.println(e.getMessage());
+				}
+				if (parent == null) continue;
+				DiffFormatter df = new DiffFormatter(NullOutputStream.INSTANCE);
+				df.setRepository(repository);
+				df.setDiffComparator(RawTextComparator.DEFAULT);
+				df.setDetectRenames(true);
+				if (extension != null)
+					df.setPathFilter(PathSuffixFilter.create(extension));
+				List<DiffEntry> diffs = null;
+				try {
+					diffs = df.scan(parent.getTree(), commit.getTree());
+				} catch (IOException e) {
+					System.err.println(e.getMessage());
+				}
+				if (diffs == null) continue;
+				if (!diffs.isEmpty()) {
+					//System.out.println(commit.getName());
+					//System.out.println(commit.getCommitTime());
+					//System.out.println(commit.getFullMessage());
+					//System.out.println("Commit: " + Integer.toHexString(commit.getId().hashCode()));
+					String newDirName = commit.getName().substring(0, 7);
+					File newDir = new File(outputFolder+"/" +newDirName );
+					if(!newDir.exists())
+						newDir.mkdirs();
+					//LinkedHashMap<String, String> AffectedFile = new LinkedHashMap<String, String>();
+					for (DiffEntry diff : diffs) {
+						if (diff.getOldMode().getObjectType() == Constants.OBJ_BLOB && diff.getNewMode().getObjectType() == Constants.OBJ_BLOB) {
+							//System.out.println(diff.getChangeType() + ": " + diff.getOldPath() + " --> " + diff.getNewPath());
+							ObjectLoader ldr = null;
+							String oldContent = null, newContent = null;
+							try {
+								ldr = repository.open(diff.getOldId().toObjectId(), Constants.OBJ_BLOB);
+								oldContent = new String(ldr.getCachedBytes());
+							} catch (IOException e) {
+								System.err.println(e.getMessage());
+							}
+							try {
+								ldr = repository.open(diff.getNewId().toObjectId(), Constants.OBJ_BLOB);
+								newContent = new String(ldr.getCachedBytes());
+							} catch (IOException e) {
+								System.err.println(e.getMessage());
+							}
+							//System.out.println(diff.getNewPath());
+							String newPath = diff.getNewPath();
+							newPath = newPath.substring(newPath.lastIndexOf("/"));							
+							try 
+							{
+								File newFile = new File(outputFolder+"/" +newDirName + "/" + newPath);
+								FileWriter fw = new FileWriter(newFile);
+								fw.write(oldContent);
+								fw.close();
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							
+							//AffectedFile.put(diff.getNewPath(), oldContent);
+							
+							/*System.out.println(oldContent);
+							System.out.println(newContent);*/
+						}
+					}
+					//CommitChangeFileMap.put(commit.getName().substring(0, 7), AffectedFile);
+				}
+			}
 		}
 	}
 	
@@ -120,8 +210,10 @@ public class GitConnector extends VCSConnector {
 				if (diffs == null) continue;
 				if (!diffs.isEmpty()) {
 					//System.out.println(commit.getName());
-					System.out.println(commit.getCommitTime());
+					//System.out.println(commit.getCommitTime());
 					//System.out.println(commit.getFullMessage());
+					//System.out.println("Commit: " + Integer.toHexString(commit.getId().hashCode()));
+					LinkedHashMap<String, String> AffectedFile = new LinkedHashMap<String, String>();
 					for (DiffEntry diff : diffs) {
 						if (diff.getOldMode().getObjectType() == Constants.OBJ_BLOB && diff.getNewMode().getObjectType() == Constants.OBJ_BLOB) {
 							//System.out.println(diff.getChangeType() + ": " + diff.getOldPath() + " --> " + diff.getNewPath());
@@ -139,16 +231,26 @@ public class GitConnector extends VCSConnector {
 							} catch (IOException e) {
 								System.err.println(e.getMessage());
 							}
+							//System.out.println(diff.getNewPath());
+							AffectedFile.put(diff.getNewPath(), oldContent);
+							
 							/*System.out.println(oldContent);
 							System.out.println(newContent);*/
 						}
 					}
+					CommitChangeFileMap.put(commit.getName().substring(0, 7), AffectedFile);
 				}
 			}
 		}
 	}
 	
-	public  LinkedHashMap<String, String> getFileContent(String commitTag, List<String> files, String extension)
+	public  LinkedHashMap<String, String> getChangedFileContent(String commitTag)
+	{
+		return CommitChangeFileMap.get(commitTag);
+		//LinkedHashMap<String, String> filesConntent = new LinkedHashMap<>();
+	}
+	
+	/*public  LinkedHashMap<String, String> getFileContent(String commitTag, List<String> files, String extension)
 	{
 		if(files == null|| files.isEmpty())
 			return null;
@@ -211,7 +313,7 @@ public class GitConnector extends VCSConnector {
 
 		
 		return filesConntent;
-	}
+	}*/
 	
 	public String getFileContent(ObjectId objectId, int objectType) {
 		String content = null;

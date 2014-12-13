@@ -419,13 +419,16 @@ public class FeatureExtraction {
 		//LinkedHashMap<String, LinkedHashMap<Integer, Integer>> projectFilenameCountMap = new LinkedHashMap<>();
 		String javaDirPath = project + "/";
 		JavaGroumVisitor javaGroumVisitor = new JavaGroumVisitor();
+		System.out.println("Parsing project....");
 		javaGroumVisitor.dirParsing(javaDirPath);
 		
 		String[] javaSourceFileExt = new String[] { ".java" };
 
+		System.out.println("Reading API Description....");
 		LinkedHashMap<String, APIDescription> apiDes = APIDescriptionReader.readAPIToMap(api_desPath);
 		List<File> javaFiles = DirProcessing.getFilteredRecursiveFiles(
 														new File(codedir), javaSourceFileExt);
+		System.out.println("Parsing File....");
 		for(File file : javaFiles)
 		{
 			LinkedHashMap<String, Integer> nameCountMap = doFileParsing(file, javaGroumVisitor);
@@ -457,30 +460,70 @@ public class FeatureExtraction {
 		return javaGroumVisitor;
 	}
 	
+	public static LinkedHashMap<String, List<LinkedHashMap<Integer, Integer>>> ExtractFilesInFolder(String folder, List<String> filesPath,
+									JavaGroumVisitor javaGroumVisitor,
+									LinkedHashMap<String, APIDescription> apiDes)
+	{
+		LinkedHashMap<String, List<LinkedHashMap<Integer, Integer>>> ret = new LinkedHashMap<String, List<LinkedHashMap<Integer, Integer>>>();
+		String[] javaSourceFileExt = new String[] { ".java" };
+		
+		System.out.println("Parsing Files in folder: " + folder + "........");
+		
+		List<File> javaFiles = DirProcessing.getFilteredRecursiveFiles(
+														new File(folder), javaSourceFileExt);
+		for(File file : javaFiles)
+		{
+			String filename = file.getName();
+			for(String filePath : filesPath)
+			{
+				if(filePath.endsWith(filename))
+				{
+					List<LinkedHashMap<Integer, Integer>> extractedFileFeature =  ExtractFileFeatures(file, filePath, javaGroumVisitor, apiDes);
+					if(extractedFileFeature != null)
+					{
+						ret.put(filePath, extractedFileFeature);
+					}
+					
+				}
+			}
+		}
+		
+		return ret;
+	}
+	
 	public static List<LinkedHashMap<Integer, Integer>> ExtractFileFeatures(File file, String filePath, 
 																			JavaGroumVisitor javaGroumVisitor,
 																			LinkedHashMap<String, APIDescription> apiDes)
 	{
 		List<LinkedHashMap<Integer, Integer>> ret = new ArrayList<>();
-		LinkedHashMap<String, Integer> nameCountMap = doFileParsing(file, javaGroumVisitor);
-		LinkedHashMap<Integer, Integer> fileNameCountMap = getFileNameCountMap(nameCountMap, identifierDictionaryIdMap, idIdenditiferDictionaryMap);
-		fileNameIdentifierCountMap.put(filePath, fileNameCountMap);
-		ret.add(fileNameCountMap);
+		try
+		{
+			LinkedHashMap<String, Integer> nameCountMap = doFileParsing(file, javaGroumVisitor);
+			LinkedHashMap<Integer, Integer> fileNameCountMap = getFileNameCountMap(nameCountMap, identifierDictionaryIdMap, idIdenditiferDictionaryMap);
+			fileNameIdentifierCountMap.put(filePath, fileNameCountMap);
+			ret.add(fileNameCountMap);
 		
-		LinkedHashMap<String, Integer> commentTermCountMap = getCommentTermMap(javaGroumVisitor);
-		LinkedHashMap<Integer, Integer> fileNameCommentTermCountMap = getFileNameCountMap(commentTermCountMap, commentDictionaryIdMap, idcommentDictionaryMap);
-		fileNameCommentCountMap.put(filePath, fileNameCommentTermCountMap);
-		ret.add(fileNameCommentTermCountMap);
+			LinkedHashMap<String, Integer> commentTermCountMap = getCommentTermMap(javaGroumVisitor);
+			LinkedHashMap<Integer, Integer> fileNameCommentTermCountMap = getFileNameCountMap(commentTermCountMap, commentDictionaryIdMap, idcommentDictionaryMap);
+			fileNameCommentCountMap.put(filePath, fileNameCommentTermCountMap);
+			ret.add(fileNameCommentTermCountMap);
 		
-		LinkedHashMap<String, Integer> APITermCountMap = getAPITermMap(javaGroumVisitor);
-		LinkedHashMap<Integer, Integer> fileNameAPITermCountMap = getFileNameCountMap(APITermCountMap, APIDictionaryIdMap, idAPIDictionaryMap);
-		fileNameAPICountMap.put(filePath, fileNameAPITermCountMap);
-		ret.add(fileNameAPITermCountMap);
+			LinkedHashMap<String, Integer> APITermCountMap = getAPITermMap(javaGroumVisitor);
+			LinkedHashMap<Integer, Integer> fileNameAPITermCountMap = getFileNameCountMap(APITermCountMap, APIDictionaryIdMap, idAPIDictionaryMap);
+			fileNameAPICountMap.put(filePath, fileNameAPITermCountMap);
+			ret.add(fileNameAPITermCountMap);
 		
-		LinkedHashMap<String, Integer> APIDesTermCountMap = getAPIDescriptionTerm(javaGroumVisitor, apiDes);
-		LinkedHashMap<Integer, Integer> fileNameAPIDesTermCountMap = getFileNameCountMap(APIDesTermCountMap, APIDesDictionaryIdMap, idAPIDesDictionaryMap);
-		fileNameAPIDesCountMap.put(filePath, fileNameAPIDesTermCountMap);
-		ret.add(fileNameAPIDesTermCountMap);
+			LinkedHashMap<String, Integer> APIDesTermCountMap = getAPIDescriptionTerm(javaGroumVisitor, apiDes);
+			LinkedHashMap<Integer, Integer> fileNameAPIDesTermCountMap = getFileNameCountMap(APIDesTermCountMap, APIDesDictionaryIdMap, idAPIDesDictionaryMap);
+			fileNameAPIDesCountMap.put(filePath, fileNameAPIDesTermCountMap);
+			ret.add(fileNameAPIDesTermCountMap);
+		}
+		catch(Exception e)
+		{
+			Logger.logDebug(filePath);
+			System.out.println("Error when parsing file: " + filePath);
+			return null;
+		}
 		
 		return ret;
 	}

@@ -15,5 +15,4 @@ public class Test {
 		//FeatureExtraction.doProjectParsing("C:\\Users\\An\\workspace\\RECODER\\test");
 		//while(true);
 	}
-
 }
